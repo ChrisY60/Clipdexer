@@ -1,0 +1,30 @@
+{
+  "name": "clipdexer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1",
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:browser": "node scripts/browser-check.mjs",
+    "format": "prettier --write app lib tests scripts next.config.ts package.json tsconfig.json README.md"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "next": "^16.4.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
