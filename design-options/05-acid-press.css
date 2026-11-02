@@ -1,0 +1,15 @@
+:root {--paper:#20211d;--bg:#20211d;--ink:#f1f0e8;--text:#f1f0e8;--red:#d7ef62;--orange:#d7ef62;--muted:#b4b6a8;--border:#55584b;--panel:#292c24;--green:#d7ef62;--serif:'Syne',serif;}
+      body {font-family:'Manrope',sans-serif;}
+      .hero h1 {font-size:80px;}
+      .hero > p,.demo-banner p,.section-heading p,.index-count,.mode-pill {color:#b4b6a8;}
+      .search-form {background:#292c24;box-shadow:5px 5px 0 #55584b;}
+      .search-form input::placeholder {color:#b4b6a8;}
+      .search-form kbd {color:#b4b6a8;border-color:#55584b;}
+      .search-submit,.search-submit:disabled {background:#d7ef62;color:#20211d;}
+      .button.small {background:#f1f0e8;color:#20211d;}
+      .topbar,.demo-banner {border-color:#55584b;}
+      .sidebar nav .nav-item,.channel {color:#f1f0e8;}
+      .sidebar nav .nav-item.active {color:#d7ef62;}
+      .hero {min-height:440px;} .library,.page-footer {display:none;}
+      .brand {font-size:40px;} .demo-banner strong {font-size:24px;}
+    

@@ -24,8 +24,16 @@ export type Clip = {
   duration?: number;
   thumbnail?: string;
   segments: Segment[];
+  segmentCount?: number;
   embeddingModel?: string;
   createdAt: string;
+};
+export type ClipPage = {
+  clips: Clip[];
+  page: number;
+  pages: number;
+  total: number;
+  counts: { total: number; ready: number; pending: number };
 };
 export type Match = {
   clip: Clip;

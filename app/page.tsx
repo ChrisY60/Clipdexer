@@ -8,7 +8,6 @@ import {
   Play,
   Check,
   ChevronDown,
-  Clapperboard,
   Layers,
   Settings2,
   Radio,
@@ -16,17 +15,16 @@ import {
   Link as LinkIcon,
   X,
   LoaderCircle,
-  Clock,
   Eye,
   AudioLines,
-  Sparkles,
   Film,
   LogOut,
   RefreshCw,
   ExternalLink,
   CheckCircle2,
+  Info,
 } from "lucide-react";
-import { Clip, Match, stamp } from "@/lib/types";
+import { Clip, ClipPage, Match, stamp } from "@/lib/types";
 type Config = {
   ai: boolean;
   twitch: boolean;
@@ -40,11 +38,6 @@ type TwitchClip = {
   duration: number;
   video_id: string;
 };
-const suggestions = [
-  "Purple shirt, talking about Bulgaria",
-  "The one-health clutch",
-  "A cat takes over the keyboard",
-];
 async function api(url: string, options?: RequestInit) {
   const response = await fetch(url, options);
   const data = await response.json();
@@ -54,17 +47,48 @@ async function api(url: string, options?: RequestInit) {
 }
 function Mark() {
   return (
-    <span className="brand-mark">
-      <Clapperboard size={21} strokeWidth={2.5} />
+    <span className="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M5 4h14v6H11v12h8v6H5zM21 4h6v24h-6z" fill="currentColor" />
+        <path d="m14 13 6 3-6 3z" fill="currentColor" />
+      </svg>
     </span>
   );
 }
 function Art({ clip }: { clip: Clip }) {
+  const [unavailable, setUnavailable] = useState(false);
+  const preview = useRef<HTMLVideoElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!preview.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setVisible(true);
+        observer.disconnect();
+      }
+    });
+    observer.observe(preview.current);
+    return () => observer.disconnect();
+  }, [clip.id]);
   if (clip.source === "sample")
     return (
       <img
         src={`/samples/${clip.thumbnail}.svg`}
+        loading="lazy"
         alt="Illustrated sample storyboard"
+      />
+    );
+  if (clip.source !== "link" && !unavailable)
+    return (
+      <video
+        className="clip-still"
+        ref={preview}
+        src={visible ? `/api/media/${clip.id}#t=0.1` : undefined}
+        preload="metadata"
+        muted
+        playsInline
+        aria-label={`Still from ${clip.title}`}
+        onError={() => setUnavailable(true)}
       />
     );
   return (
@@ -89,6 +113,20 @@ export default function Home() {
   const [mode, setMode] = useState<"demo" | "twitch">("demo");
   const [tab, setTab] = useState("Discover");
   const [clips, setClips] = useState<Clip[]>([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<ClipPage>({
+    clips: [],
+    page: 1,
+    pages: 1,
+    total: 0,
+    counts: { total: 0, ready: 0, pending: 0 },
+  });
+  const [libraryLoading, setLibraryLoading] = useState(true);
+  const [libraryError, setLibraryError] = useState("");
+  const libraryRequest = useRef(0);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+  const [detailRetry, setDetailRetry] = useState(0);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Match[] | null>(null);
   const [searched, setSearched] = useState("");
@@ -106,33 +144,115 @@ export default function Home() {
   const [filter, setFilter] = useState("All moments");
   const [intro, setIntro] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const resultsHeading = useRef<HTMLHeadingElement>(null);
+  const pageNavigation = useRef(false);
   const searchVersion = useRef(0);
-  const activeMode = useRef(mode);
-  activeMode.current = mode;
-  async function refresh() {
-    const [c, list] = await Promise.all([
-      api("/api/config"),
-      api(`/api/clips?mode=${mode}`),
-    ]);
-    setConfig(c);
-    if (activeMode.current === mode) setClips(list);
+  const view = tab === "Processing" ? "processing" : "library";
+  const libraryKey = `${mode}/${filter}/${page}/${view}`;
+  const activeLibrary = useRef(libraryKey);
+  activeLibrary.current = libraryKey;
+  async function refresh(updateConfig = true) {
+    const request = ++libraryRequest.current;
+    const params = new URLSearchParams({
+      mode,
+      page: String(page),
+      view,
+      filter:
+        filter === "Samples"
+          ? "samples"
+          : filter === "My uploads"
+            ? "uploads"
+            : "all",
+    });
+    try {
+      const [c, data] = await Promise.all([
+        updateConfig ? api("/api/config") : Promise.resolve(null),
+        api(`/api/clips?${params}`) as Promise<ClipPage>,
+      ]);
+      if (
+        request !== libraryRequest.current ||
+        activeLibrary.current !== libraryKey
+      )
+        return;
+      if (c) setConfig(c);
+      setClips(data.clips);
+      setPagination(data);
+      setPage(data.page);
+      setLibraryError("");
+    } catch (e) {
+      if (
+        request === libraryRequest.current &&
+        activeLibrary.current === libraryKey
+      )
+        setLibraryError((e as Error).message);
+    } finally {
+      if (
+        request === libraryRequest.current &&
+        activeLibrary.current === libraryKey
+      )
+        setLibraryLoading(false);
+    }
   }
   useEffect(() => {
-    refresh().catch((e) => setError(e.message));
-    const timer = setInterval(() => refresh().catch(() => {}), 4000);
+    setClips([]);
+    setLibraryLoading(true);
+    setLibraryError("");
+    void refresh();
+  }, [libraryKey]);
+  useEffect(() => {
+    if (libraryLoading || !pageNavigation.current) return;
+    pageNavigation.current = false;
+    resultsHeading.current?.focus({ preventScroll: true });
+    resultsHeading.current?.scrollIntoView({ block: "start" });
+  }, [libraryLoading]);
+  useEffect(() => {
+    if (!pagination.counts.pending) return;
+    const timer = setInterval(() => {
+      if (!document.hidden) void refresh(false);
+    }, 4000);
     return () => clearInterval(timer);
-  }, [mode]);
+  }, [libraryKey, pagination.counts.pending]);
+  useEffect(() => {
+    setDetailLoading(false);
+    setDetailError("");
+    if (!selected || selected.clip.segmentCount === undefined) return;
+    let cancelled = false;
+    setDetailLoading(true);
+    setDetailError("");
+    api(`/api/clips?${new URLSearchParams({ mode, id: selected.clip.id })}`)
+      .then((clip) => {
+        if (!cancelled)
+          setSelected((current) => (current ? { ...current, clip } : null));
+      })
+      .catch((e) => {
+        if (!cancelled) setDetailError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.clip.id, detailRetry, mode]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("action") === "upload") setModal("upload");
+    if (params.get("view") === "library") setTab("Clip library");
     if (params.get("error")) setError(params.get("error")!);
     if (params.has("connected")) setMode("twitch");
-    window.history.replaceState({}, "", window.location.pathname);
+    if (
+      params.has("action") || params.has("view") || params.has("connected") || params.has("error")
+    ) {
+      window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+    }
     const timer = setTimeout(() => setIntro(1), 1300);
     const foundTimer = setTimeout(() => setIntro(2), 2700);
     const key = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        if (document.querySelector('[role="dialog"]')) return;
         e.preventDefault();
-        input.current?.focus();
+        setTab("Discover");
+        requestAnimationFrame(() => input.current?.focus());
       }
       if (e.key === "Escape") {
         setModal(null);
@@ -146,10 +266,20 @@ export default function Home() {
       window.removeEventListener("keydown", key);
     };
   }, []);
+  useEffect(() => {
+    if (results === null) return;
+    resultsHeading.current?.focus({ preventScroll: true });
+    resultsHeading.current?.scrollIntoView({
+      block: "start",
+      behavior: "instant",
+    });
+  }, [results]);
   function switchMode(next: "demo" | "twitch") {
     searchVersion.current++;
     setBusy(false);
     setMode(next);
+    setPage(1);
+    setSelected(null);
     setResults(null);
     setQuery("");
     setFilter("All moments");
@@ -172,7 +302,7 @@ export default function Home() {
       setNotice(data.notice);
       setSearched(text);
     } catch (e) {
-      setError((e as Error).message);
+      if (version === searchVersion.current) setError((e as Error).message);
     } finally {
       if (version === searchVersion.current) setBusy(false);
     }
@@ -189,23 +319,16 @@ export default function Home() {
       setError((e as Error).message);
     }
   }
-  const ready = clips.filter((c) => c.status === "ready");
-  const pending = clips.filter((c) =>
-    ["queued", "processing"].includes(c.status),
-  );
-  const display = clips.filter(
-    (c) =>
-      filter === "All moments" ||
-      (filter === "Samples" ? c.source === "sample" : c.source !== "sample"),
-  );
+  const display = clips;
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <aside className="sidebar">
         <a className="brand" href="/" aria-label="Clipdexer home">
           <Mark />
-          <span>
-            clipdexer<span className="brand-dot">.</span>
-          </span>
+          <span>clipdexer</span>
         </a>
         <div className="workspace-label">
           YOUR WORKSPACE <span>V.01</span>
@@ -237,21 +360,30 @@ export default function Home() {
             <button
               key={name}
               className={tab === name ? "nav-item active" : "nav-item"}
+              aria-current={tab === name ? "page" : undefined}
               onClick={() => {
                 setTab(name);
+                setPage(1);
                 setResults(null);
               }}
             >
               <Icon size={19} />
               {name}
               {name === "Clip library" && (
-                <span className="count">{clips.length}</span>
+                <span className="count">{pagination.counts.total}</span>
               )}
-              {name === "Processing" && pending.length > 0 && (
-                <span className="count">{pending.length}</span>
+              {name === "Processing" && pagination.counts.pending > 0 && (
+                <span className="count">{pagination.counts.pending}</span>
               )}
             </button>
           ))}
+          <a
+            className="nav-item nav-link"
+            href="/about"
+            aria-label="About Clipdexer"
+          >
+            <Info size={19} /> About
+          </a>
         </nav>
         <div className="sidebar-divider" />
         <div className="workspace-label">CONNECTED CHANNELS</div>
@@ -264,7 +396,6 @@ export default function Home() {
         </button>
         <div className="sidebar-bottom">
           <div className="little-note">
-            <span className="note-star">✳</span>
             <strong>
               Good moments.
               <br />
@@ -285,19 +416,14 @@ export default function Home() {
             </span>
             <div>
               <strong>{config.user?.name || "Your local workspace"}</strong>
-              <small>
-                Hackathon edition <span>✦</span>
-              </small>
+              <small>Local edition</small>
             </div>
             <span className="online-dot" />
           </div>
         </div>
       </aside>
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <header className="topbar">
-          <div className="breadcrumb">
-            Workspace <span>/</span> <strong>{tab}</strong>
-          </div>
           <div className="top-actions">
             <button className="mode-pill" onClick={() => setModal("settings")}>
               <span />
@@ -328,55 +454,22 @@ export default function Home() {
           )}
           {tab === "Discover" && (
             <>
-              <section className="hero">
-                {mode === "demo" && (
-                  <button
-                    className={`intro-memory phase-${intro}`}
-                    onClick={() => search(suggestions[0])}
-                    aria-label="See the sample memory search"
-                  >
-                    <span className="intro-label">A LITTLE DEMO MAGIC</span>
-                    <span className="intro-query">
-                      “Purple shirt… Bulgaria?”
-                    </span>
-                    <span className="intro-answer">
-                      <img src="/samples/purple.svg" alt="" />
-                      <span>
-                        <strong>
-                          {intro === 2
-                            ? "That’s the one."
-                            : "Connecting the dots…"}
-                        </strong>
-                        <small>
-                          {intro === 2
-                            ? "Sample moment · 00:18"
-                            : "Speech + visual details"}
-                        </small>
-                      </span>
-                      {intro === 2 ? (
-                        <CheckCircle2 size={18} />
-                      ) : (
-                        <Search size={18} />
-                      )}
-                    </span>
-                  </button>
-                )}
-                <div className="eyebrow">
-                  <span className="tiny-spark">✳</span> LESS SCROLLING. MORE
-                  “THAT’S THE ONE.”
-                </div>
+              <section className={`hero intro-${intro}`} id="search-desk">
                 <h1>
-                  Wait, find me that
-                  <br />
-                  clip where<span className="orange">{intro ? "…" : "|"}</span>
+                  <span className="headline-top">Wait, find me</span>
+                  <span className="headline-bottom">
+                    that clip <em>where</em>
+                    <span className="orange">…</span>
+                  </span>
                 </h1>
-                <p>
-                  You remember the moment. We find the clip.
-                  <br className="mobile-break" /> Search what was said, seen, or
-                  somewhere in between.
-                </p>
+                <p>Describe what stayed with you. We’ll find the moment.</p>
+                <div className="archive-art" aria-hidden="true">
+                  <img src="/identity/memory-loop.svg" alt="" />
+                </div>
                 <form
                   className="search-form"
+                  role="search"
+                  aria-busy={busy}
                   onSubmit={(e) => {
                     e.preventDefault();
                     search();
@@ -389,9 +482,9 @@ export default function Home() {
                     onChange={(e) => setQuery(e.target.value)}
                     maxLength={500}
                     aria-label="Describe the clip you remember"
-                    placeholder="Purple shirt, talking about Bulgaria…"
+                    placeholder="Describe the clip you remember…"
                   />
-                  <kbd>⌘ K</kbd>
+                  <kbd>Ctrl / ⌘ K</kbd>
                   <button
                     className="search-submit"
                     disabled={busy || !query.trim()}
@@ -400,47 +493,31 @@ export default function Home() {
                     {busy ? (
                       <LoaderCircle className="spin" size={21} />
                     ) : (
-                      <ArrowRight size={23} />
+                      <>
+                        <span>Find the moment</span>
+                        <ArrowUpRight size={23} />
+                      </>
                     )}
                   </button>
                 </form>
-                <div className="suggestions">
-                  <span>Try a memory</span>
-                  {suggestions.map((s, i) => (
-                    <button key={s} onClick={() => search(s)}>
-                      {i === 0 ? "👕" : i === 1 ? "🎮" : "🐈"} {s}
-                      <ArrowUpRight size={13} />
-                    </button>
-                  ))}
-                </div>
-                <div className="search-footnote">
-                  <span>
-                    <AudioLines size={14} /> Spoken words
-                  </span>
-                  <span>
-                    <Eye size={14} /> Visual details
-                  </span>
-                  <span>
-                    <Clock size={14} /> Exact moments
-                  </span>
-                  <span className="saved-note">
-                    <Check size={13} /> Indexed once. Found in seconds.
-                  </span>
-                </div>
+                <span className="sr-only" role="status">
+                  {busy
+                    ? "Searching your indexed clips…"
+                    : results
+                      ? `${results.length} matching clips found.`
+                      : ""}
+                </span>
               </section>
               <section className="demo-banner">
-                <div className="demo-icon">
-                  <Sparkles size={21} />
-                </div>
                 <div>
                   <strong>
                     {mode === "demo"
-                      ? "Your next “I remember that!” starts here."
-                      : "Your channel, made searchable."}
+                      ? "Every collection starts with a moment."
+                      : "A living archive of your channel."}
                   </strong>
                   <p>
                     {mode === "demo"
-                      ? "Explore 3 pre-indexed sample storyboards, or bring your own clips."
+                      ? "Upload your clips to make them searchable."
                       : "Import a small collection of clips you are authorized to download."}
                   </p>
                 </div>
@@ -449,18 +526,35 @@ export default function Home() {
                     setModal(mode === "demo" ? "upload" : "twitch")
                   }
                 >
-                  {mode === "demo" ? "Make it your own" : "Import clips"}
+                  {mode === "demo" ? "Add to the archive" : "Import clips"}
                   <ArrowUpRight size={17} />
                 </button>
               </section>
             </>
           )}
-          {tab === "Processing" ? (
-            <section className="library">
+          {libraryLoading && !results ? (
+            <p className="library-feedback" role="status">
+              Loading clips…
+            </p>
+          ) : libraryError && !results ? (
+            <div className="library-feedback" role="alert">
+              {libraryError}{" "}
+              <button
+                className="button subtle"
+                onClick={() => {
+                  setLibraryLoading(true);
+                  void refresh();
+                }}
+              >
+                Try again
+              </button>
+            </div>
+          ) : tab === "Processing" ? (
+            <section className="library" id="library">
               <div className="section-heading">
                 <div>
-                  <h2>
-                    Behind the moments <span className="orange">✳</span>
+                  <h2 ref={resultsHeading} tabIndex={-1}>
+                    Behind the moments
                   </h2>
                   <p>
                     Your videos are processed once. Their indexes stay here.
@@ -512,27 +606,19 @@ export default function Home() {
             <section className="library">
               <div className="section-heading">
                 <div>
-                  <div className="section-kicker">
-                    {results
-                      ? "MEMORY, MEET EVIDENCE"
-                      : tab === "Clip library"
-                        ? "YOUR COLLECTION"
-                        : "A FEW GOOD MOMENTS"}
-                  </div>
-                  <h2>
+                  <h2 ref={resultsHeading} tabIndex={-1}>
                     {results
                       ? "Found in the footage"
                       : tab === "Clip library"
                         ? "Your clip library"
                         : "The rabbit hole, organized."}{" "}
-                    <span className="orange">✳</span>
                   </h2>
                   <p>
                     {results
                       ? `Results for “${searched}”`
                       : tab === "Clip library"
                         ? "Every saved clip, with its indexing status."
-                        : "Start with a sample. Find the part you remember."}
+                        : "Browse your clips or search for a moment."}
                   </p>
                 </div>
                 {results ? (
@@ -548,7 +634,7 @@ export default function Home() {
                 ) : (
                   <span className="index-count">
                     <span />
-                    {ready.length} clips indexed
+                    {pagination.counts.ready} clips indexed
                   </span>
                 )}
               </div>
@@ -573,6 +659,7 @@ export default function Home() {
                         >
                           <button
                             className="result-art"
+                            aria-label={`Play ${m.clip.title} at ${stamp(m.timestamp)}`}
                             onClick={() =>
                               setSelected({
                                 clip: m.clip,
@@ -669,15 +756,16 @@ export default function Home() {
                         <button
                           key={f}
                           className={filter === f ? "selected" : ""}
-                          onClick={() => setFilter(f)}
+                          aria-pressed={filter === f}
+                          onClick={() => {
+                            setFilter(f);
+                            setPage(1);
+                          }}
                         >
                           {f === "All moments" && <Layers size={14} />} {f}
                         </button>
                       ))}
                     </div>
-                    <span className="sort-label">
-                      Small collection. Big memories.
-                    </span>
                   </div>
                   <div className="clip-grid">
                     {display.map((clip) => (
@@ -734,7 +822,8 @@ export default function Home() {
                             </span>
                             <span>{clip.streamer || "Local upload"}</span>
                             <span className="evidence-count">
-                              {clip.segments.length} moments
+                              {clip.segmentCount ?? clip.segments.length}{" "}
+                              moments
                             </span>
                           </div>
                         </div>
@@ -759,15 +848,41 @@ export default function Home() {
               )}
             </section>
           )}
+          {!results &&
+            !libraryLoading &&
+            !libraryError &&
+            pagination.pages > 1 && (
+              <nav className="library-pagination" aria-label="Clip pages">
+                <button
+                  className="button subtle"
+                  disabled={page <= 1}
+                  onClick={() => {
+                    pageNavigation.current = true;
+                    setPage((p) => p - 1);
+                  }}
+                >
+                  Previous
+                </button>
+                <span role="status">
+                  Page {pagination.page} of {pagination.pages} ·{" "}
+                  {pagination.total} clips
+                </span>
+                <button
+                  className="button subtle"
+                  disabled={page >= pagination.pages}
+                  onClick={() => {
+                    pageNavigation.current = true;
+                    setPage((p) => p + 1);
+                  }}
+                >
+                  Next
+                </button>
+              </nav>
+            )}
           <footer className="page-footer">
-            <span>
-              <Mark /> Built for the moments you can’t quite remember.
-            </span>
-            <span>
-              {mode === "demo"
-                ? "Sample data is illustrative. Your uploads are never faked."
-                : "Authorized imports · Server-side processing"}
-            </span>
+            <div className="footer-wordmark">
+              clipdexer<span className="footer-dot">.</span>
+            </div>
           </footer>
         </div>
       </main>
@@ -882,7 +997,21 @@ export default function Home() {
       )}
       {selected && (
         <Modal title={selected.clip.title} close={() => setSelected(null)} wide>
-          <Player selected={selected} />
+          {detailError && selected.clip.segmentCount !== undefined ? (
+            <div role="alert">
+              <p>{detailError}</p>
+              <button
+                className="button"
+                onClick={() => setDetailRetry((v) => v + 1)}
+              >
+                Try again
+              </button>
+            </div>
+          ) : detailLoading || selected.clip.segmentCount !== undefined ? (
+            <p role="status">Loading clip…</p>
+          ) : (
+            <Player selected={selected} />
+          )}
         </Modal>
       )}
     </div>
@@ -907,8 +1036,12 @@ function Modal({
     ref.current?.focus();
     const trap = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
-      const items = ref.current?.querySelectorAll<HTMLElement>(
-        'button,a[href],input,select,video,[tabindex="0"]',
+      const items = Array.from(
+        ref.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),video[controls],[tabindex="0"]',
+        ) || [],
+      ).filter(
+        (item) => item.getClientRects().length > 0 && item.tabIndex >= 0,
       );
       if (!items?.length) return;
       const first = items[0],
@@ -949,7 +1082,6 @@ function Modal({
       >
         <div className="modal-heading">
           <div>
-            <span className="section-kicker">CLIPDEXER / YOUR MOMENTS</span>
             <h2>{title}</h2>
           </div>
           <button
@@ -1088,8 +1220,8 @@ function Player({
     <div className="player-content">
       {isSample && (
         <div className="sample-disclaimer">
-          <Sparkles size={16} /> Authored sample storyboard · synthetic
-          captions, not real streamer footage or AI output.
+          <Film size={16} /> Authored sample storyboard · synthetic captions,
+          not real streamer footage or AI output.
         </div>
       )}
       {embed && clip.twitchId ? (
@@ -1241,8 +1373,8 @@ function TwitchPanel({
           <label className="form-label">
             Connect as
             <select value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="broadcaster">Broadcaster — my channel</option>
-              <option value="editor">Editor — an authorized channel</option>
+              <option value="broadcaster">Broadcaster: my channel</option>
+              <option value="editor">Editor: an authorized channel</option>
             </select>
           </label>
           <p className="field-help">

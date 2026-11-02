@@ -1,0 +1,15 @@
+:root {--paper:#101d2e;--bg:#101d2e;--ink:#e7eef5;--text:#e7eef5;--red:#9bc5ff;--orange:#9bc5ff;--muted:#a5b6c9;--border:#3a4c60;--panel:#18283b;--green:#9bc5ff;--serif:'Space Grotesk',serif;}
+      body {font-family:'Inter',sans-serif;}
+      .hero h1 {font-size:80px;}
+      .hero > p,.demo-banner p,.section-heading p,.index-count,.mode-pill {color:#a5b6c9;}
+      .search-form {background:#18283b;box-shadow:5px 5px 0 #3a4c60;}
+      .search-form input::placeholder {color:#a5b6c9;}
+      .search-form kbd {color:#a5b6c9;border-color:#3a4c60;}
+      .search-submit,.search-submit:disabled {background:#9bc5ff;color:#101d2e;}
+      .button.small {background:#e7eef5;color:#101d2e;}
+      .topbar,.demo-banner {border-color:#3a4c60;}
+      .sidebar nav .nav-item,.channel {color:#e7eef5;}
+      .sidebar nav .nav-item.active {color:#9bc5ff;}
+      .hero {min-height:440px;} .library,.page-footer {display:none;}
+      .brand {font-size:40px;} .demo-banner strong {font-size:24px;}
+    
