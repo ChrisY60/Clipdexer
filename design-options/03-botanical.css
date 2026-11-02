@@ -1,0 +1,15 @@
+:root {--paper:#e8edda;--bg:#e8edda;--ink:#203d32;--text:#203d32;--red:#466d3c;--orange:#466d3c;--muted:#526653;--border:#aebfa4;--panel:#f1f5e8;--green:#466d3c;--serif:'Fraunces',serif;}
+      body {font-family:'Manrope',sans-serif;}
+      .hero h1 {font-size:84px;}
+      .hero > p,.demo-banner p,.section-heading p,.index-count,.mode-pill {color:#526653;}
+      .search-form {background:#f1f5e8;box-shadow:5px 5px 0 #aebfa4;}
+      .search-form input::placeholder {color:#526653;}
+      .search-form kbd {color:#526653;border-color:#aebfa4;}
+      .search-submit,.search-submit:disabled {background:#466d3c;color:#ffffff;}
+      .button.small {background:#203d32;color:#e8edda;}
+      .topbar,.demo-banner {border-color:#aebfa4;}
+      .sidebar nav .nav-item,.channel {color:#203d32;}
+      .sidebar nav .nav-item.active {color:#466d3c;}
+      .hero {min-height:440px;} .library,.page-footer {display:none;}
+      .brand {font-size:40px;} .demo-banner strong {font-size:24px;}
+    

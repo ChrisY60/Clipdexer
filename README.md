@@ -22,7 +22,7 @@ npm start
 
 ## Try the demo
 
-- Click **Purple shirt, talking about Bulgaria** to combine visual and speech evidence.
+- Enter a description in the search field, then select **Find the moment**.
 - Open a result and click an evidence timestamp to seek the local player.
 - Search an unrelated phrase to see **No confident match**. Partial matches are labeled **Weak match**.
 - **Add clips** accepts MP4, WebM, MOV, and MKV, up to 100 MB and 180 seconds.
@@ -65,6 +65,12 @@ Local SHA-256 deduplication prevents uploading the same video twice. Saved speec
 Uses Twitch's [Get Clips and Get Clips Download APIs](https://dev.twitch.tv/docs/api/reference/#get-clips-download), OAuth authorization-code flow with state validation, server-side token refresh, and the [official embedded clip player](https://dev.twitch.tv/docs/embed/video-and-clips/). Twitch currently requires its manage-clips scope even for authorized clip downloads. Clipdexer does not create, edit, or delete Twitch clips. No scraping or third-party downloading tools are used.
 
 The downloaded local preview supports precise timestamp seeking; the official Twitch embed is an alternative. Deleted clips, expired downloads, missing source VODs, permission denials, and rate limits are surfaced. A missing source VOD does not prevent using an available authorized clip file. Tokens stay in server memory behind an opaque HttpOnly cookie; restart requires reconnecting. Imported indexes persist and are visible only to the matching Twitch user in Twitch mode. Demo uploads and samples remain a separate collection.
+
+## Library and navigation
+
+The Botanical interface includes an About page at `/about`, keyboard navigation, and responsive layouts. The library returns 12 lightweight clip summaries per page. Filters run on the server; full index evidence loads when a clip is opened. Visible video cards load previews lazily. Background refreshes run only while clips are queued or processing.
+
+Storage remains a local JSON file, which the server reads to build each page. Pagination bounds browser payloads and rendering; it is not a database migration.
 
 ## Architecture and limits
 

@@ -1,0 +1,15 @@
+:root {--paper:#f2e3e8;--bg:#f2e3e8;--ink:#3a243b;--text:#3a243b;--red:#853a66;--orange:#853a66;--muted:#725c70;--border:#c9aebf;--panel:#f9edf2;--green:#853a66;--serif:'Bodoni Moda',serif;}
+      body {font-family:'DM Sans',sans-serif;}
+      .hero h1 {font-size:88px;}
+      .hero > p,.demo-banner p,.section-heading p,.index-count,.mode-pill {color:#725c70;}
+      .search-form {background:#f9edf2;box-shadow:5px 5px 0 #c9aebf;}
+      .search-form input::placeholder {color:#725c70;}
+      .search-form kbd {color:#725c70;border-color:#c9aebf;}
+      .search-submit,.search-submit:disabled {background:#853a66;color:#ffffff;}
+      .button.small {background:#3a243b;color:#f2e3e8;}
+      .topbar,.demo-banner {border-color:#c9aebf;}
+      .sidebar nav .nav-item,.channel {color:#3a243b;}
+      .sidebar nav .nav-item.active {color:#853a66;}
+      .hero {min-height:440px;} .library,.page-footer {display:none;}
+      .brand {font-size:40px;} .demo-banner strong {font-size:24px;}
+    

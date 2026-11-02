@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./editorial.css";
 export const metadata: Metadata = {
-  title: "Clipdexer — Find the moment",
+  title: "Clipdexer | Find the moment",
   description:
     "You remember the moment. We find the clip. Search speech, scenes, and everything in between.",
 };

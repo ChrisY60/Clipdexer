@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="540" viewBox="0 0 640 540">
+<defs><pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#aebfa4" stroke-width=".5"/></pattern><mask id="holes"><rect width="640" height="540" fill="white"/><ellipse cx="333" cy="255" rx="101" ry="148" fill="black" transform="rotate(31 333 255)"/></mask></defs>
+<path d="M75 28H570V478H75Z" fill="url(#grid)"/>
+<g stroke="#203d32" stroke-width="1"><path d="M56 28h38m-19-19v38M551 28h38m-19-19v38M56 478h38m-19-19v38M551 478h38m-19-19v38"/><path d="M74 505h497M74 500v10m497-10v10"/></g>
+<g transform="rotate(-13 320 270)">
+<path d="M115 366C64 294 94 161 194 88C302 9 450 37 495 139C540 242 477 371 363 425C258 475 158 426 115 366Z" fill="#203d32"/>
+<path d="M139 349C90 278 122 160 217 96C309 34 436 62 474 148C513 239 455 354 354 402C261 447 178 407 139 349Z" fill="#466d3c"/>
+<path d="M164 329C123 266 156 167 237 116C318 65 422 88 453 163C484 240 431 337 342 379C263 416 197 380 164 329Z" fill="#e8edda"/>
+<path d="M181 322C144 262 178 177 248 132C318 88 406 107 434 174C460 240 411 321 332 358C264 390 208 367 181 322Z" fill="#203d32"/>
+<path d="M202 307C173 258 204 186 266 150C326 116 394 132 414 188C433 244 390 306 324 336C269 361 223 346 202 307Z" fill="#466d3c"/>
+<path d="M226 295C201 253 230 199 280 171C328 144 382 159 397 205C411 249 374 295 320 316C277 333 242 324 226 295Z" fill="#e8edda"/>
+<path d="M249 282C232 252 252 214 291 192C328 172 366 184 377 218C386 252 357 283 317 297C285 308 260 302 249 282Z" fill="#203d32"/>
+<path d="M272 269C260 247 276 225 304 213C330 202 353 211 358 233C362 254 343 272 317 280C295 286 280 283 272 269Z" fill="#466d3c"/>
+<path d="M134 326C126 384 194 418 266 409L466 382L493 461L280 490C153 506 70 447 76 363Z" fill="#466d3c"/>
+<path d="M134 326C126 384 194 418 266 409L466 382" fill="none" stroke="#203d32" stroke-width="3"/>
+<path d="M93 365C89 430 170 475 274 460L480 431" fill="none" stroke="#e8edda" stroke-width="9" stroke-dasharray="8 12"/>
+<path d="M119 353C110 402 186 444 271 432L472 407" fill="none" stroke="#203d32" stroke-width="2"/>
+</g>
+<g transform="translate(403 308) rotate(9)"><rect width="175" height="102" fill="#e8edda" stroke="#203d32"/><path d="M10 10h155v61H10z" fill="#203d32"/><path d="m67 22 27 18-27 18zm30 0 27 18-27 18z" fill="#e8edda"/></g>
+
+</svg>

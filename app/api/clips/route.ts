@@ -15,18 +15,25 @@ import { aiConfigured } from "@/lib/ai";
 import { kickWorker, probe } from "@/lib/pipeline";
 import { checkOrigin, failure, twitchUrl } from "@/lib/http";
 import { Clip } from "@/lib/types";
+import { libraryPage, visibleClips } from "@/lib/library";
 export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   kickWorker();
   const s = session(req);
   const mode = req.nextUrl.searchParams.get("mode");
-  const clips = await listClips();
-  return Response.json(
-    (mode === "twitch"
-      ? clips.filter((c) => c.source === "twitch" && c.owner === s?.userId && s)
-      : [...samples, ...clips.filter((c) => c.source !== "twitch")]
-    ).map(publicClip),
+  const clips = visibleClips(
+    [...samples, ...(await listClips())],
+    mode,
+    s?.userId,
   );
+  const id = req.nextUrl.searchParams.get("id");
+  if (id) {
+    const clip = clips.find((c) => c.id === id);
+    return clip
+      ? Response.json(publicClip(clip))
+      : failure(new Error("Clip not found"), 404);
+  }
+  return Response.json(libraryPage(clips, req.nextUrl.searchParams));
 }
 export async function POST(req: NextRequest) {
   try {
