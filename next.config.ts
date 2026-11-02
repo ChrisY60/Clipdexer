@@ -8,7 +8,11 @@ const config: NextConfig = {
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Hugging Face Spaces shows the app inside an iframe on its own page.
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self' https://huggingface.co",
+          },
         ],
       },
     ];

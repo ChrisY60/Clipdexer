@@ -1,13 +1,15 @@
+import { routeFixtureMedia } from "./fixture-media";
 import { libraryPage } from "../lib/library";
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
-import { samples } from "../lib/samples";
+import { samples } from "../tests/fixtures/clips";
 import { rankClips } from "../lib/search";
 
 async function main() {
   const browser = await chromium.launch();
   const page = await browser.newPage({ reducedMotion: "reduce" });
+  await routeFixtureMedia(page);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await mkdir("test-results", { recursive: true });

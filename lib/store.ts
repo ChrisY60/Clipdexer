@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rename, unlink } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { Clip } from "./types";
 export const dataDir =
@@ -20,8 +21,32 @@ export async function mutateClips(fn: (clips: Clip[]) => void) {
     await mkdir(dataDir, { recursive: true });
     const clips = await listClips();
     fn(clips);
-    await writeFile(db + ".tmp", JSON.stringify(clips));
-    await rename(db + ".tmp", db);
+    // Windows file scanners can briefly hold the destination and reject rename
+    // with EPERM. A unique temporary file avoids colliding with stale writes.
+    const temporary = `${db}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporary, JSON.stringify(clips));
+      for (let attempt = 0; ; attempt++) {
+        try {
+          await rename(temporary, db);
+          break;
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (
+            process.platform !== "win32" ||
+            !["EPERM", "EBUSY", "EACCES"].includes(code || "") ||
+            attempt >= 7
+          )
+            throw error;
+          await new Promise((resolve) =>
+            setTimeout(resolve, 25 * 2 ** attempt),
+          );
+        }
+      }
+    } catch (error) {
+      await unlink(temporary).catch(() => {});
+      throw error;
+    }
   });
   state.clipStoreLock = task.catch(() => {});
   await task;
@@ -38,6 +63,15 @@ export async function patchClip(id: string, patch: Partial<Clip>) {
     const clip = clips.find((c) => c.id === id);
     if (clip) Object.assign(clip, patch);
   });
+}
+export async function removeClip(id: string): Promise<Clip | undefined> {
+  let removed: Clip | undefined;
+  await mutateClips((clips) => {
+    const index = clips.findIndex((clip) => clip.id === id);
+    if (index < 0) return;
+    [removed] = clips.splice(index, 1);
+  });
+  return removed;
 }
 export function publicClip(clip: Clip): Clip {
   const { file, hash, owner, ...rest } = clip;

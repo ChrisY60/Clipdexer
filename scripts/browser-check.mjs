@@ -16,39 +16,13 @@ let createdId;
 const testTitle = `Browser test ${randomUUID()}`;
 try {
   await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Preview Wait…" }).waitFor();
-  await page.screenshot({ path: "test-results/desktop.png", fullPage: true });
-  await page.getByRole("button", { name: /Purple shirt, talking/ }).click();
-  await page.getByText("Strong keyword match").waitFor();
-  assert.equal(await page.locator(".result-card").count(), 1);
-  await page.getByRole("button", { name: /Bulgaria! I want/ }).click();
-  await page.locator("video").waitFor();
-  await page.waitForFunction(
-    () => document.querySelector("video")?.readyState >= 1,
-  );
-  assert.equal(
-    await page.locator("video").evaluate((v) => Math.round(v.currentTime)),
-    18,
-  );
-  await page.locator("video").evaluate((v) => v.play());
-  await page.waitForTimeout(500);
-  assert((await page.locator("video").evaluate((v) => v.currentTime)) > 18);
-  await page.screenshot({ path: "test-results/player.png" });
-  await page.getByRole("button", { name: "Close dialog" }).click();
-  await page
-    .getByLabel("Describe the clip you remember")
-    .fill("underwater submarine astronaut");
-  await page.getByRole("button", { name: "Find clip", exact: true }).click();
-  await page
-    .getByRole("heading", { name: "No confident match", exact: true })
-    .waitFor();
   await page.getByRole("button", { name: "Add clips", exact: true }).click();
   assert.equal(
     (await (await page.request.get("/api/config")).json()).ai,
     false,
     "Run this browser fixture with AI disabled to avoid paid calls.",
   );
-  const sample = await readFile("public/samples/purple.mp4");
+  const sample = await readFile("tests/fixtures/media/purple.mp4");
   await page.locator("input[type=file]").setInputFiles({
     name: "browser-fixture.mp4",
     mimeType: "video/mp4",
@@ -98,7 +72,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "Browser checks passed: search, seeking/playback, no match, upload without credentials, byte ranges, Twitch auth, origin checks, mobile overflow.",
+    "Browser checks passed: upload without credentials, byte ranges, Twitch auth, origin checks, mobile overflow.",
   );
 } finally {
   if (createdId) {

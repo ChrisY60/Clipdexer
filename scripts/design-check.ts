@@ -1,8 +1,9 @@
+import { routeFixtureMedia } from "./fixture-media";
 import { libraryPage } from "../lib/library";
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
-import { samples } from "../lib/samples";
+import { samples } from "../tests/fixtures/clips";
 import { rankClips } from "../lib/search";
 async function main() {
   const browser = await chromium.launch();
@@ -10,6 +11,7 @@ async function main() {
     viewport: { width: 1440, height: 1100 },
     baseURL: "http://localhost:3000",
   });
+  await routeFixtureMedia(page);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await mkdir("test-results", { recursive: true });

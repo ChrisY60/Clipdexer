@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { configured, random, states, redirectUri } from "@/lib/twitch";
+import { readOnly } from "@/lib/demo";
 export async function GET(req: NextRequest) {
-  if (!configured())
+  if (!configured() || readOnly())
     return NextResponse.redirect(
       new URL("/?error=Twitch+credentials+are+not+configured", req.url),
     );

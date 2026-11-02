@@ -1,6 +1,7 @@
+import { routeFixtureMedia } from "./fixture-media";
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
-import { samples } from "../lib/samples";
+import { samples } from "../tests/fixtures/clips";
 import { libraryPage } from "../lib/library";
 import { Clip } from "../lib/types";
 
@@ -16,6 +17,7 @@ async function main() {
   let lists = 0,
     details = 0,
     failNext = false;
+  await routeFixtureMedia(page);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/api/config", (r) =>

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { session, helix } from "@/lib/twitch";
 import { checkOrigin, failure } from "@/lib/http";
+import { assertWritable } from "@/lib/demo";
 import { listClips, saveClip, publicClip, dataDir } from "@/lib/store";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     checkOrigin(req);
+    assertWritable();
     const s = session(req);
     if (!s) return failure(new Error("Connect with Twitch first."), 401);
     const { id } = await req.json();

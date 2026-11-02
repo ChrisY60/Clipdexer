@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { listClips, publicClip } from "@/lib/store";
-import { samples } from "@/lib/samples";
-import { rankClips } from "@/lib/search";
+import { rankClips, parseQuery } from "@/lib/search";
 import { aiConfigured, embed, embeddingModel } from "@/lib/ai";
 import { session } from "@/lib/twitch";
 import { checkOrigin, failure } from "@/lib/http";
@@ -16,16 +15,17 @@ export async function POST(req: NextRequest) {
     const clips =
       mode === "twitch"
         ? all.filter((c) => s && c.owner === s.userId && c.source === "twitch")
-        : [...samples, ...all.filter((c) => c.source !== "twitch")];
-    let vector: number[] | undefined;
-    let notice =
-      "Sample clips use authored demonstration evidence and keyword matching.";
+        : all.filter((c) => c.source !== "twitch");
+    let clueVectors: number[][] | undefined;
+    const parsed = parseQuery(query);
+    let notice = "Search across your saved speech and visual evidence.";
     if (
+      parsed.clues.length > 0 &&
       aiConfigured() &&
       clips.some((c) => c.embeddingModel === embeddingModel())
     ) {
       try {
-        [vector] = await embed([query]);
+        clueVectors = await embed(parsed.clues.map((clue) => clue.text));
         notice = "Hybrid search across saved transcript and visual indexes.";
       } catch {
         notice =
@@ -33,7 +33,13 @@ export async function POST(req: NextRequest) {
       }
     }
     return Response.json({
-      results: rankClips(clips, query, vector, embeddingModel()).map((m) => ({
+      results: rankClips(
+        clips,
+        query,
+        undefined,
+        embeddingModel(),
+        clueVectors,
+      ).map((m) => ({
         ...m,
         clip: publicClip(m.clip),
         evidence: m.evidence.map(({ embedding, ...rest }) => {

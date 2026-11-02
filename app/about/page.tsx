@@ -66,8 +66,11 @@ export default function AboutPage() {
 
         <section className="about-method" aria-labelledby="method-title">
           <div className="about-section-heading">
-            <span>01 / THE METHOD</span>
-            <h2 id="method-title">A memory, indexed.</h2>
+            <h2 id="method-title">
+              A&nbsp;memory,
+              <br />
+              indexed.
+            </h2>
             <p>
               Each clip is processed once. Later, search works from the saved
               index.
@@ -79,8 +82,8 @@ export default function AboutPage() {
               <Upload size={20} />
               <h3>Bring it in</h3>
               <p>
-                Upload a local video. Twitch clips can be imported when the
-                connected account has access.
+                Upload a clip manually or connect your Twitch account and import
+                clips you are authorized to access.
               </p>
             </section>
             <section>
@@ -88,8 +91,8 @@ export default function AboutPage() {
               <AudioLines size={20} />
               <h3>Make it searchable</h3>
               <p>
-                Clipdexer saves timestamped speech and descriptions of what is
-                visible throughout the video.
+                AI indexes timestamped speech and describes what is visible, so
+                both can be searched later.
               </p>
             </section>
             <section>

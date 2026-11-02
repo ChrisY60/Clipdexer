@@ -28,6 +28,8 @@ import { Clip, ClipPage, Match, stamp } from "@/lib/types";
 type Config = {
   ai: boolean;
   twitch: boolean;
+  readOnly?: boolean;
+  examples?: string[];
   user: { id: string; name: string; role: string } | null;
 };
 type TwitchClip = {
@@ -129,6 +131,7 @@ export default function Home() {
   const [detailRetry, setDetailRetry] = useState(0);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Match[] | null>(null);
+  const [showOtherMatches, setShowOtherMatches] = useState(false);
   const [searched, setSearched] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -241,9 +244,16 @@ export default function Home() {
     if (params.get("error")) setError(params.get("error")!);
     if (params.has("connected")) setMode("twitch");
     if (
-      params.has("action") || params.has("view") || params.has("connected") || params.has("error")
+      params.has("action") ||
+      params.has("view") ||
+      params.has("connected") ||
+      params.has("error")
     ) {
-      window.history.replaceState({}, "", window.location.pathname + window.location.hash);
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + window.location.hash,
+      );
     }
     const timer = setTimeout(() => setIntro(1), 1300);
     const foundTimer = setTimeout(() => setIntro(2), 2700);
@@ -290,6 +300,7 @@ export default function Home() {
     setQuery(text);
     setBusy(true);
     setError("");
+    setShowOtherMatches(false);
     setTab("Discover");
     try {
       const data = await api("/api/search", {
@@ -386,14 +397,18 @@ export default function Home() {
           </a>
         </nav>
         <div className="sidebar-divider" />
-        <div className="workspace-label">CONNECTED CHANNELS</div>
-        <button className="channel" onClick={() => setModal("twitch")}>
-          <span className="channel-icon">
-            <Radio size={17} />
-          </span>
-          <span>{config.user?.name || "Connect your Twitch"}</span>
-          <Plus size={15} />
-        </button>
+        {!config.readOnly && (
+          <>
+            <div className="workspace-label">CONNECTED CHANNELS</div>
+            <button className="channel" onClick={() => setModal("twitch")}>
+              <span className="channel-icon">
+                <Radio size={17} />
+              </span>
+              <span>{config.user?.name || "Connect your Twitch"}</span>
+              <Plus size={15} />
+            </button>
+          </>
+        )}
         <div className="sidebar-bottom">
           <div className="little-note">
             <strong>
@@ -402,9 +417,11 @@ export default function Home() {
               Terrible memory.
             </strong>
             <p>That’s what we’re here for.</p>
-            <button onClick={() => setModal("upload")}>
-              Add your first clip <ArrowUpRight size={16} />
-            </button>
+            {!config.readOnly && (
+              <button onClick={() => setModal("upload")}>
+                Add your first clip <ArrowUpRight size={16} />
+              </button>
+            )}
           </div>
           <button className="nav-item" onClick={() => setModal("settings")}>
             <Settings2 size={18} />
@@ -427,13 +444,22 @@ export default function Home() {
           <div className="top-actions">
             <button className="mode-pill" onClick={() => setModal("settings")}>
               <span />
-              {mode === "demo" ? "Demo mode" : "Twitch connected"}
+              {config.readOnly
+                ? "Hosted demo · read-only"
+                : mode === "demo"
+                  ? "Demo mode"
+                  : "Twitch connected"}
               <ChevronDown size={13} />
             </button>
-            <button className="button small" onClick={() => setModal("upload")}>
-              <Plus size={16} />
-              Add clips
-            </button>
+            {!config.readOnly && (
+              <button
+                className="button small"
+                onClick={() => setModal("upload")}
+              >
+                <Plus size={16} />
+                Add clips
+              </button>
+            )}
           </div>
         </header>
         <div className="page-content">
@@ -500,6 +526,22 @@ export default function Home() {
                     )}
                   </button>
                 </form>
+                {!!config.examples?.length && mode === "demo" && (
+                  <div className="try-row" aria-label="Example searches">
+                    <span>Try</span>
+                    {config.examples.map((example) => (
+                      <button
+                        key={example}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => search(example)}
+                      >
+                        {example}
+                        <ArrowRight size={13} />
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <span className="sr-only" role="status">
                   {busy
                     ? "Searching your indexed clips…"
@@ -511,24 +553,35 @@ export default function Home() {
               <section className="demo-banner">
                 <div>
                   <strong>
-                    {mode === "demo"
-                      ? "Every collection starts with a moment."
-                      : "A living archive of your channel."}
+                    {config.readOnly
+                      ? `A preloaded demo collection of ${pagination.counts.ready} real clips.`
+                      : mode === "demo"
+                        ? "Every collection starts with a moment."
+                        : "A living archive of your channel."}
                   </strong>
                   <p>
-                    {mode === "demo"
-                      ? "Upload your clips to make them searchable."
-                      : "Import a small collection of clips you are authorized to download."}
+                    {config.readOnly
+                      ? "Each clip was transcribed and its frames described by AI. Search for a moment, or open any clip below to see its full timestamped index."
+                      : mode === "demo"
+                        ? "Upload your clips to make them searchable."
+                        : "Import a small collection of clips you are authorized to download."}
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    setModal(mode === "demo" ? "upload" : "twitch")
-                  }
-                >
-                  {mode === "demo" ? "Add to the archive" : "Import clips"}
-                  <ArrowUpRight size={17} />
-                </button>
+                {config.readOnly ? (
+                  <a href="/about">
+                    How it works
+                    <ArrowUpRight size={17} />
+                  </a>
+                ) : (
+                  <button
+                    onClick={() =>
+                      setModal(mode === "demo" ? "upload" : "twitch")
+                    }
+                  >
+                    {mode === "demo" ? "Add to the archive" : "Import clips"}
+                    <ArrowUpRight size={17} />
+                  </button>
+                )}
               </section>
             </>
           )}
@@ -570,9 +623,14 @@ export default function Home() {
                     Add a local video to start building your searchable
                     collection.
                   </p>
-                  <button className="button" onClick={() => setModal("upload")}>
-                    Upload a clip <Plus size={16} />
-                  </button>
+                  {!config.readOnly && (
+                    <button
+                      className="button"
+                      onClick={() => setModal("upload")}
+                    >
+                      Upload a clip <Plus size={16} />
+                    </button>
+                  )}
                 </div>
               ) : (
                 clips
@@ -589,15 +647,16 @@ export default function Home() {
                       <span className={`status ${c.status}`}>
                         {c.status.replace("_", " ")}
                       </span>
-                      {["error", "needs_config"].includes(c.status) && (
-                        <button
-                          className="button subtle"
-                          onClick={() => retry(c.id)}
-                        >
-                          <RefreshCw size={15} />
-                          Retry indexing
-                        </button>
-                      )}
+                      {!config.readOnly &&
+                        ["error", "needs_config"].includes(c.status) && (
+                          <button
+                            className="button subtle"
+                            onClick={() => retry(c.id)}
+                          >
+                            <RefreshCw size={15} />
+                            Retry indexing
+                          </button>
+                        )}
                     </div>
                   ))
               )}
@@ -649,100 +708,154 @@ export default function Home() {
                         Try a distinctive phrase, clothing color, or object.
                         Nothing is invented to fill the gaps.
                       </p>
+                      {!!config.examples?.length && mode === "demo" && (
+                        <div className="try-row centered">
+                          <span>Try</span>
+                          {config.examples.map((example) => (
+                            <button
+                              key={example}
+                              type="button"
+                              onClick={() => search(example)}
+                            >
+                              {example}
+                              <ArrowRight size={13} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="results-grid">
-                      {results.map((m, i) => (
-                        <article
-                          className={`result-card ${i === 0 ? "best" : ""}`}
-                          key={m.clip.id}
-                        >
-                          <button
-                            className="result-art"
-                            aria-label={`Play ${m.clip.title} at ${stamp(m.timestamp)}`}
-                            onClick={() =>
-                              setSelected({
-                                clip: m.clip,
-                                time: m.timestamp,
-                                evidence: m.evidence,
-                              })
-                            }
-                          >
-                            <Art clip={m.clip} />
-                            <span className="play-circle">
-                              <Play size={23} fill="currentColor" />
-                            </span>
-                            <span className="duration">
-                              {stamp(m.clip.duration || 0)}
-                            </span>
-                          </button>
-                          <div className="result-details">
-                            <div className="result-label">
-                              <span
-                                className={
-                                  m.confidence === "strong"
-                                    ? "match-good"
-                                    : "match-weak"
+                      {results.map(
+                        (m, i) =>
+                          (i === 0 || showOtherMatches) && (
+                            <article
+                              className={`result-card ${i === 0 ? "best" : "other-match"}`}
+                              key={m.clip.id}
+                            >
+                              <button
+                                className="result-art"
+                                aria-label={`Play ${m.clip.title} at ${stamp(m.timestamp)}`}
+                                onClick={() =>
+                                  setSelected({
+                                    clip: m.clip,
+                                    time: m.timestamp,
+                                    evidence: m.evidence,
+                                  })
                                 }
                               >
-                                {m.confidence === "strong" ? (
-                                  <CheckCircle2 size={14} />
-                                ) : (
-                                  <Search size={14} />
-                                )}{" "}
-                                {m.confidence === "strong"
-                                  ? "Strong keyword match"
-                                  : "Weak match · review evidence"}
-                              </span>
-                              {m.clip.source === "sample" && (
-                                <span className="sample-label">SAMPLE</span>
-                              )}
-                            </div>
-                            <h3>{m.clip.title}</h3>
-                            <p className="clip-meta">
-                              {m.clip.streamer || "Local upload"} ·{" "}
-                              {m.clip.category || "Uncategorized"}
-                            </p>
-                            <div className="evidence-list">
-                              {m.evidence.map((s, j) => (
+                                <Art clip={m.clip} />
+                                <span className="play-circle">
+                                  <Play size={23} fill="currentColor" />
+                                </span>
+                                <span className="duration">
+                                  {stamp(m.clip.duration || 0)}
+                                </span>
+                              </button>
+                              <div className="result-details">
+                                <div className="result-label">
+                                  {i === 0 && (
+                                    <span className="best-match-label">
+                                      Best match
+                                    </span>
+                                  )}
+                                  <span
+                                    className={
+                                      m.confidence === "strong"
+                                        ? "match-good"
+                                        : m.partial
+                                          ? "match-weak"
+                                          : "match-likely"
+                                    }
+                                  >
+                                    {m.confidence === "strong" ? (
+                                      <CheckCircle2 size={14} />
+                                    ) : (
+                                      <Search size={14} />
+                                    )}{" "}
+                                    {m.confidence === "strong"
+                                      ? "Strong match · words found in clip"
+                                      : m.partial
+                                        ? "Partial match · review evidence"
+                                        : "Likely match · similar meaning"}
+                                  </span>
+                                  {m.clip.source === "sample" && (
+                                    <span className="sample-label">SAMPLE</span>
+                                  )}
+                                </div>
+                                <h3>{m.clip.title}</h3>
+                                <p className="clip-meta">
+                                  {[
+                                    m.clip.streamer || "Local upload",
+                                    m.clip.category,
+                                    m.clip.duration
+                                      ? stamp(m.clip.duration)
+                                      : undefined,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </p>
+                                <div className="evidence-list">
+                                  {m.explanation && (
+                                    <p className="match-explanation">
+                                      {m.explanation}
+                                    </p>
+                                  )}
+                                  {m.evidence.map((s, j) => (
+                                    <button
+                                      key={j}
+                                      onClick={() =>
+                                        setSelected({
+                                          clip: m.clip,
+                                          time: s.start,
+                                          evidence: m.evidence,
+                                        })
+                                      }
+                                    >
+                                      {s.kind === "speech" ? (
+                                        <AudioLines size={15} />
+                                      ) : (
+                                        <Eye size={15} />
+                                      )}
+                                      <span>{s.text}</span>
+                                      <time>{stamp(s.start)}</time>
+                                    </button>
+                                  ))}
+                                </div>
                                 <button
-                                  key={j}
+                                  className="moment-button"
                                   onClick={() =>
                                     setSelected({
                                       clip: m.clip,
-                                      time: s.start,
+                                      time: m.timestamp,
                                       evidence: m.evidence,
                                     })
                                   }
                                 >
-                                  {s.kind === "speech" ? (
-                                    <AudioLines size={15} />
-                                  ) : (
-                                    <Eye size={15} />
-                                  )}
-                                  <span>{s.text}</span>
-                                  <time>{stamp(s.start)}</time>
+                                  <Play size={14} fill="currentColor" />
+                                  Jump to {stamp(m.timestamp)}
+                                  <ArrowRight size={15} />
                                 </button>
-                              ))}
-                            </div>
-                            <button
-                              className="moment-button"
-                              onClick={() =>
-                                setSelected({
-                                  clip: m.clip,
-                                  time: m.timestamp,
-                                  evidence: m.evidence,
-                                })
-                              }
-                            >
-                              <Play size={14} fill="currentColor" />
-                              Jump to {stamp(m.timestamp)}
-                              <ArrowRight size={15} />
-                            </button>
-                          </div>
-                        </article>
-                      ))}
+                              </div>
+                            </article>
+                          ),
+                      )}
                     </div>
+                  )}
+                  {results.length > 1 && (
+                    <button
+                      className="other-matches-toggle"
+                      aria-expanded={showOtherMatches}
+                      onClick={() => setShowOtherMatches((value) => !value)}
+                    >
+                      {showOtherMatches
+                        ? "Hide other matches"
+                        : `See ${results.length - 1} other clips that match your search`}
+                      <ChevronDown
+                        size={16}
+                        className={showOtherMatches ? "expanded" : ""}
+                      />
+                    </button>
                   )}
                 </>
               ) : (
@@ -750,7 +863,7 @@ export default function Home() {
                   <div className="filter-row">
                     <div className="filters">
                       {(mode === "demo"
-                        ? ["All moments", "Samples", "My uploads"]
+                        ? ["All moments", "My uploads"]
                         : ["All moments"]
                       ).map((f) => (
                         <button
@@ -834,14 +947,16 @@ export default function Home() {
                     <div className="empty">
                       <Film size={32} />
                       <h3>This collection is waiting for its first moment.</h3>
-                      <button
-                        className="button"
-                        onClick={() =>
-                          setModal(mode === "twitch" ? "twitch" : "upload")
-                        }
-                      >
-                        Add clips <Plus size={15} />
-                      </button>
+                      {!config.readOnly && (
+                        <button
+                          className="button"
+                          onClick={() =>
+                            setModal(mode === "twitch" ? "twitch" : "upload")
+                          }
+                        >
+                          Add clips <Plus size={15} />
+                        </button>
+                      )}
                     </div>
                   )}
                 </>
@@ -897,7 +1012,26 @@ export default function Home() {
           }
           close={() => setModal(null)}
         >
-          {modal === "upload" ? (
+          {config.readOnly && modal !== "settings" ? (
+            <ReadOnlyNote />
+          ) : config.readOnly ? (
+            <div className="settings">
+              <ReadOnlyNote />
+              <div className="setting-line">
+                <span>
+                  <strong>Semantic search</strong>
+                  <small>
+                    {config.ai
+                      ? "Enabled · queries are embedded and compared with the saved index"
+                      : "Keyword search only in this deployment"}
+                  </small>
+                </span>
+                <span className={config.ai ? "green" : "muted"}>
+                  {config.ai ? "Ready" : "Keywords"}
+                </span>
+              </div>
+            </div>
+          ) : modal === "upload" ? (
             <UploadForm
               ai={config.ai}
               onDone={async (clip) => {
@@ -916,7 +1050,7 @@ export default function Home() {
               <div className="setting-line">
                 <span>
                   <strong>Demo collection</strong>
-                  <small>Sample storyboards + your local uploads</small>
+                  <small>Your local uploads and saved links</small>
                 </span>
                 <button
                   className="button subtle"
@@ -934,7 +1068,7 @@ export default function Home() {
                   <small>
                     {config.ai
                       ? "Configured · real indexing enabled"
-                      : "Not configured · samples are ready to search"}
+                      : "Not configured · add an API key to index videos"}
                   </small>
                 </span>
                 <span className={config.ai ? "green" : "muted"}>
@@ -1097,6 +1231,16 @@ function Modal({
     </div>
   );
 }
+function ReadOnlyNote() {
+  return (
+    <div className="config-note">
+      This hosted demo is read-only: uploads, Twitch imports, and re-indexing
+      are turned off so the shared collection stays intact. Every preloaded clip
+      was indexed by the same pipeline you get locally. Clone the repo and run{" "}
+      <code>npm run dev</code> to index your own clips.
+    </div>
+  );
+}
 function UploadForm({
   ai,
   onDone,
@@ -1179,7 +1323,7 @@ function UploadForm({
       <div className="config-note">
         {ai
           ? "Real indexing is enabled. Uploaded video audio and sampled frames are sent to your configured AI providers."
-          : "AI is not configured. Your file will be saved as “needs configuration” with no invented results. Sample searches remain available."}
+          : "AI is not configured. Your file will be saved as “needs configuration” with no invented results."}
       </div>
       {error && (
         <p className="form-error" role="alert">
@@ -1212,8 +1356,22 @@ function Player({
   const ref = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
   const [embed, setEmbed] = useState(false);
+  const [now, setNow] = useState(time);
+  const matched = new Set(
+    (selected.evidence || []).map((s) => `${s.kind}:${s.start}:${s.text}`),
+  );
+  const timeline = [...clip.segments].sort(
+    (a, b) => a.start - b.start || a.kind.localeCompare(b.kind),
+  );
+  // Fall back to the search evidence while the full index is unavailable.
+  const rows = timeline.length ? timeline : selected.evidence || [];
+  const active = rows.reduce<number>(
+    (found, s, i) => (s.start <= now + 0.25 ? i : found),
+    -1,
+  );
   useEffect(() => {
     if (ref.current) ref.current.currentTime = time;
+    setNow(time);
   }, [time]);
   const isSample = clip.source === "sample";
   return (
@@ -1251,8 +1409,12 @@ function Player({
               : `/api/media/${clip.id}`
           }
           onLoadedMetadata={() => {
-            if (ref.current) ref.current.currentTime = time;
+            if (!ref.current) return;
+            ref.current.currentTime = time;
+            // Opening a search result is a deliberate click: start at the match.
+            if (selected.evidence) ref.current.play().catch(() => {});
           }}
+          onTimeUpdate={(e) => setNow(e.currentTarget.currentTime)}
           onError={() => setFailed(true)}
         />
       )}{" "}
@@ -1264,7 +1426,9 @@ function Player({
       )}
       <div className="player-meta">
         <span>
-          {clip.streamer || "Local upload"} · {clip.category || "Uncategorized"}
+          {[clip.streamer || "Local upload", clip.category]
+            .filter(Boolean)
+            .join(" · ")}
         </span>
         {clip.twitchUrl && (
           <a
@@ -1292,12 +1456,25 @@ function Player({
         </p>
       )}
       <h3 className="evidence-heading">
-        {isSample ? "Sample index evidence" : "Saved index evidence"}
+        {isSample ? "Sample index evidence" : "Timestamped index"}
+        {rows.length > 0 && (
+          <small>
+            {rows.length} moments · click any line to jump
+            {matched.size > 0 ? " · highlighted lines matched your search" : ""}
+          </small>
+        )}
       </h3>
       <div className="evidence-list player-evidence">
-        {(selected.evidence || clip.segments).map((s, i) => (
+        {rows.map((s, i) => (
           <button
             key={i}
+            className={[
+              matched.has(`${s.kind}:${s.start}:${s.text}`) ? "matched" : "",
+              i === active && !embed ? "playing" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-current={i === active && !embed ? "time" : undefined}
             onClick={() => {
               setEmbed(false);
               setTimeout(() => {
@@ -1308,7 +1485,11 @@ function Player({
               }, 0);
             }}
           >
-            {s.kind === "speech" ? <AudioLines size={17} /> : <Eye size={17} />}
+            {s.kind === "speech" ? (
+              <AudioLines size={17} aria-label="Speech" />
+            ) : (
+              <Eye size={17} aria-label="Visual" />
+            )}
             <time>{stamp(s.start)}</time>
             <span>{s.text}</span>
           </button>

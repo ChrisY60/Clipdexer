@@ -1,4 +1,4 @@
-import { Clip } from "./types";
+import { Clip } from "../../lib/types";
 // Authored demonstration fixtures. They do not describe real streamer footage.
 export const samples: Clip[] = [
   {

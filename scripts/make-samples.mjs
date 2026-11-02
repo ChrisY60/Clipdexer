@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { chromium } from "@playwright/test";
 import path from "node:path";
-const out = path.resolve("public/samples");
+const out = path.resolve("tests/fixtures/media");
 await mkdir(out, { recursive: true });
 const defs = `<defs><linearGradient id="room" x2="1" y2="1"><stop stop-color="#38304f"/><stop offset="1" stop-color="#141522"/></linearGradient><linearGradient id="shirt" x2="1" y2="1"><stop stop-color="#a377f1"/><stop offset="1" stop-color="#5f3ba1"/></linearGradient><linearGradient id="desk" x2="0" y2="1"><stop stop-color="#504253"/><stop offset="1" stop-color="#26202e"/></linearGradient><radialGradient id="light"><stop stop-color="#cb77ff" stop-opacity=".35"/><stop offset="1" stop-color="#cb77ff" stop-opacity="0"/></radialGradient><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#899f9b"/><stop offset="1" stop-color="#cfbba1"/></linearGradient><linearGradient id="fur" x2="1" y2="1"><stop stop-color="#e5b579"/><stop offset="1" stop-color="#ba7b48"/></linearGradient><pattern id="keys" width="23" height="17" patternUnits="userSpaceOnUse"><rect x="2" y="2" width="19" height="12" rx="2" fill="#c1b4a2"/></pattern></defs>`;
 const scene = {

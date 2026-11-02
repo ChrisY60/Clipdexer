@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { randomUUID, createHash } from "node:crypto";
-import { mkdir, writeFile, unlink } from "node:fs/promises";
+import { mkdir, writeFile, unlink, rm } from "node:fs/promises";
 import path from "node:path";
 import {
   listClips,
@@ -8,24 +8,21 @@ import {
   publicClip,
   dataDir,
   patchClip,
+  removeClip,
 } from "@/lib/store";
-import { samples } from "@/lib/samples";
 import { session } from "@/lib/twitch";
 import { aiConfigured } from "@/lib/ai";
 import { kickWorker, probe } from "@/lib/pipeline";
 import { checkOrigin, failure, twitchUrl } from "@/lib/http";
 import { Clip } from "@/lib/types";
 import { libraryPage, visibleClips } from "@/lib/library";
+import { assertWritable } from "@/lib/demo";
 export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   kickWorker();
   const s = session(req);
   const mode = req.nextUrl.searchParams.get("mode");
-  const clips = visibleClips(
-    [...samples, ...(await listClips())],
-    mode,
-    s?.userId,
-  );
+  const clips = visibleClips(await listClips(), mode, s?.userId);
   const id = req.nextUrl.searchParams.get("id");
   if (id) {
     const clip = clips.find((c) => c.id === id);
@@ -38,6 +35,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     checkOrigin(req);
+    assertWritable();
     if (Number(req.headers.get("content-length")) > 100 * 1024 * 1024)
       throw new Error("Maximum upload size is 100 MB.");
     const form = await req.formData();
@@ -101,6 +99,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     checkOrigin(req);
+    assertWritable();
     const { id } = await req.json();
     const clip = (await listClips()).find((c) => c.id === id);
     if (
@@ -115,6 +114,40 @@ export async function PATCH(req: NextRequest) {
       throw new Error("This clip is already indexed or processing.");
     await patchClip(id, { status: "queued", error: undefined });
     kickWorker();
+    return Response.json({ ok: true });
+  } catch (e) {
+    return failure(e);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    checkOrigin(req);
+    assertWritable();
+    const { id } = await req.json();
+    if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id))
+      throw new Error("Invalid clip ID.");
+    const clips = await listClips();
+    const clip = clips.find((item) => item.id === id);
+    if (
+      !clip ||
+      (clip.source === "twitch" && clip.owner !== session(req)?.userId)
+    )
+      return failure(new Error("Clip not found"), 404);
+    if (["queued", "processing"].includes(clip.status))
+      throw new Error("Wait for indexing to finish before deleting this clip.");
+    const uploads = path.resolve(dataDir, "uploads");
+    const media = path.resolve(dataDir, "media", id);
+    const file = clip.file ? path.resolve(clip.file) : undefined;
+    if (file && path.dirname(file) !== uploads)
+      throw new Error("Clip file is outside the upload folder.");
+    const removed = await removeClip(id);
+    if (!removed) return failure(new Error("Clip not found"), 404);
+    if (file)
+      await unlink(file).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== "ENOENT") throw error;
+      });
+    await rm(media, { recursive: true, force: true });
     return Response.json({ ok: true });
   } catch (e) {
     return failure(e);

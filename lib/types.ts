@@ -36,6 +36,9 @@ export type ClipPage = {
   counts: { total: number; ready: number; pending: number };
 };
 export type Match = {
+  explanation?: string;
+  /** True when at least one clue has no supporting evidence. */
+  partial?: boolean;
   clip: Clip;
   score: number;
   confidence: "strong" | "weak";

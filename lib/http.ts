@@ -1,11 +1,20 @@
 import { NextRequest } from "next/server";
 export function checkOrigin(req: NextRequest) {
-  const expected = new URL(process.env.APP_URL || "http://localhost:3000");
   const origin = req.headers.get("origin");
+  if (!origin) return;
+  const expected = new URL(process.env.APP_URL || "http://localhost:3000");
+  // Behind a hosting proxy the public host arrives in x-forwarded-host.
+  const host = (req.headers.get("x-forwarded-host") || req.headers.get("host"))
+    ?.split(",")[0]
+    .trim();
+  let originHost = "";
+  try {
+    originHost = new URL(origin).host;
+  } catch {}
   if (
-    origin &&
     origin !== expected.origin &&
-    origin !== `http://127.0.0.1:${expected.port || "3000"}`
+    origin !== `http://127.0.0.1:${expected.port || "3000"}` &&
+    !(host && originHost === host)
   )
     throw new Error("Request origin is not allowed.");
 }
